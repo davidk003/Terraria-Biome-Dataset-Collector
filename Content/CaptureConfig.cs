@@ -33,6 +33,16 @@ public sealed class CaptureConfig : ModConfig
     [DefaultValue("")]
     public string OutputDirectory { get; set; } = string.Empty;
 
+    [Label("Restrict Capture Resolution")]
+    [Tooltip("If enabled, captures only save when the current resolution matches one of the allowed values.")]
+    [DefaultValue(false)]
+    public bool RestrictCaptureResolution { get; set; } = false;
+
+    [Label("Allowed Resolutions")]
+    [Tooltip("Comma-separated WxH values. Example: 1920x1080,1280x720")]
+    [DefaultValue("1920x1080")]
+    public string AllowedResolutions { get; set; } = "1920x1080";
+
     public static string ResolveOutputRootDirectory()
     {
         try

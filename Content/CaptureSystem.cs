@@ -19,6 +19,7 @@ public sealed class CaptureSystem : ModSystem
     private static HashSet<string>? _knownUuids;
     private static string _pendingBiome;
     private static long _lastErrorTickMs;
+    private static long _lastBlockedTickMs;
 
     public static bool RequestCapture(string biome)
     {
@@ -43,6 +44,15 @@ public sealed class CaptureSystem : ModSystem
     {
         if (Main.gameMenu || Main.dedServ || !TryTakePendingBiome(out string biome))
         {
+            return;
+        }
+
+        CaptureConfig config = ModContent.GetInstance<CaptureConfig>();
+        int requestedWidth = Main.screenWidth;
+        int requestedHeight = Main.screenHeight;
+        if (!IsResolutionAllowed(config, requestedWidth, requestedHeight, out string blockedMessage))
+        {
+            ReportCaptureBlocked(blockedMessage);
             return;
         }
 
@@ -190,6 +200,65 @@ public sealed class CaptureSystem : ModSystem
         }
     }
 
+    private static bool IsResolutionAllowed(CaptureConfig config, int width, int height, out string blockedMessage)
+    {
+        blockedMessage = string.Empty;
+        if (!config.RestrictCaptureResolution)
+        {
+            return true;
+        }
+
+        string allowedText = config.AllowedResolutions ?? string.Empty;
+        string[] tokens = allowedText.Split(new[] { ',', ';', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length == 0)
+        {
+            blockedMessage = "Allowed resolutions list is empty";
+            return false;
+        }
+
+        foreach (string token in tokens)
+        {
+            if (TryParseResolutionToken(token, out int allowedWidth, out int allowedHeight) && allowedWidth == width && allowedHeight == height)
+            {
+                return true;
+            }
+        }
+
+        blockedMessage = $"Resolution {width}x{height} not allowed ({allowedText})";
+        return false;
+    }
+
+    private static bool TryParseResolutionToken(string token, out int width, out int height)
+    {
+        width = 0;
+        height = 0;
+        string trimmed = token.Trim();
+        if (trimmed.Length == 0)
+        {
+            return false;
+        }
+
+        int separatorIndex = trimmed.IndexOf('x');
+        if (separatorIndex < 0)
+        {
+            separatorIndex = trimmed.IndexOf('X');
+        }
+
+        if (separatorIndex <= 0 || separatorIndex >= trimmed.Length - 1)
+        {
+            return false;
+        }
+
+        string widthPart = trimmed[..separatorIndex];
+        string heightPart = trimmed[(separatorIndex + 1)..];
+        if (!int.TryParse(widthPart, out width) || !int.TryParse(heightPart, out height))
+        {
+            return false;
+        }
+
+        return width > 0 && height > 0;
+    }
+
     private static string CreateShortUuid()
     {
         EnsureKnownUuidsLoaded();
@@ -265,5 +334,18 @@ public sealed class CaptureSystem : ModSystem
 
         Interlocked.Exchange(ref _lastErrorTickMs, now);
         Main.QueueMainThreadAction(() => Main.NewText($"Capture failed: {context}"));
+    }
+
+    private static void ReportCaptureBlocked(string message)
+    {
+        long now = Environment.TickCount64;
+        long last = Interlocked.Read(ref _lastBlockedTickMs);
+        if (now - last < 2000)
+        {
+            return;
+        }
+
+        Interlocked.Exchange(ref _lastBlockedTickMs, now);
+        Main.NewText($"Capture skipped: {message}");
     }
 }

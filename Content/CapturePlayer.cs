@@ -10,10 +10,21 @@ public sealed class CapturePlayer : ModPlayer
     private const bool DebugBiome = false;
     private const int DebugIntervalTicks = 120;
 
+    private bool _autoCaptureEnabled;
+    private bool _autoCaptureInitialized;
+    private bool _lastConfigAutoCaptureEnabled;
     private int _autoCaptureTimer;
     private int _debugTimer;
     private ulong _lastCaptureTick;
     private bool _hasCaptured;
+
+    public override void Initialize()
+    {
+        _autoCaptureInitialized = false;
+        _autoCaptureEnabled = false;
+        _lastConfigAutoCaptureEnabled = false;
+        _autoCaptureTimer = 0;
+    }
 
     public override void ProcessTriggers(TriggersSet triggersSet)
     {
@@ -23,6 +34,8 @@ public sealed class CapturePlayer : ModPlayer
         }
 
         CaptureConfig config = ModContent.GetInstance<CaptureConfig>();
+        EnsureAutoCaptureInitialized(config);
+        SyncAutoCaptureFromConfig(config);
 
         if (BiomeDatasetCollector.CaptureKeybind?.JustPressed == true)
         {
@@ -31,9 +44,11 @@ public sealed class CapturePlayer : ModPlayer
 
         if (BiomeDatasetCollector.ToggleAutoKeybind?.JustPressed == true)
         {
-            config.AutoCaptureEnabled = !config.AutoCaptureEnabled;
+            _autoCaptureEnabled = !_autoCaptureEnabled;
+            _lastConfigAutoCaptureEnabled = _autoCaptureEnabled;
+            config.AutoCaptureEnabled = _autoCaptureEnabled;
             _autoCaptureTimer = 0;
-            Main.NewText(config.AutoCaptureEnabled ? "Auto-capture enabled" : "Auto-capture disabled");
+            Main.NewText(_autoCaptureEnabled ? "Auto-capture enabled" : "Auto-capture disabled");
         }
     }
 
@@ -45,6 +60,8 @@ public sealed class CapturePlayer : ModPlayer
         }
 
         CaptureConfig config = ModContent.GetInstance<CaptureConfig>();
+        EnsureAutoCaptureInitialized(config);
+        SyncAutoCaptureFromConfig(config);
 
         if (DebugBiome)
         {
@@ -57,7 +74,7 @@ public sealed class CapturePlayer : ModPlayer
             }
         }
 
-        if (!config.AutoCaptureEnabled)
+        if (!_autoCaptureEnabled)
         {
             return;
         }
@@ -80,9 +97,46 @@ public sealed class CapturePlayer : ModPlayer
         _ = TryRequestCapture(config);
     }
 
+    private void EnsureAutoCaptureInitialized(CaptureConfig config)
+    {
+        if (_autoCaptureInitialized)
+        {
+            return;
+        }
+
+        _autoCaptureEnabled = false;
+        _lastConfigAutoCaptureEnabled = false;
+        _autoCaptureTimer = 0;
+        _autoCaptureInitialized = true;
+
+        if (config.AutoCaptureEnabled)
+        {
+            config.AutoCaptureEnabled = false;
+        }
+    }
+
+    private void SyncAutoCaptureFromConfig(CaptureConfig config)
+    {
+        if (config.AutoCaptureEnabled == _lastConfigAutoCaptureEnabled)
+        {
+            return;
+        }
+
+        _lastConfigAutoCaptureEnabled = config.AutoCaptureEnabled;
+        _autoCaptureEnabled = config.AutoCaptureEnabled;
+        _autoCaptureTimer = 0;
+        Main.NewText(_autoCaptureEnabled ? "Auto-capture enabled" : "Auto-capture disabled");
+    }
+
     private bool IsLocalActivePlayer()
     {
-        return !Main.gameMenu && Player.whoAmI == Main.myPlayer;
+        if (Main.gameMenu)
+        {
+            _autoCaptureInitialized = false;
+            return false;
+        }
+
+        return Player.whoAmI == Main.myPlayer;
     }
 
     private bool TryRequestCapture(CaptureConfig config)
