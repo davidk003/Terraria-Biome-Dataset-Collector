@@ -1,0 +1,4 @@
+displayName = Biome Dataset Collector
+author = David Kim
+version = 0.1
+description = Collects biome data for dataset generation.
