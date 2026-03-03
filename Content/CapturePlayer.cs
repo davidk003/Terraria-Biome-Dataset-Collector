@@ -1,6 +1,7 @@
 using System;
 using Terraria;
 using Terraria.GameInput;
+using Terraria.Localization;
 using Terraria.ModLoader;
 
 namespace BiomeDatasetCollector.Content;
@@ -48,7 +49,9 @@ public sealed class CapturePlayer : ModPlayer
             _lastConfigAutoCaptureEnabled = _autoCaptureEnabled;
             config.AutoCaptureEnabled = _autoCaptureEnabled;
             _autoCaptureTimer = 0;
-            Main.NewText(_autoCaptureEnabled ? "Auto-capture enabled" : "Auto-capture disabled");
+            Main.NewText(Language.GetTextValue(_autoCaptureEnabled
+                ? "Mods.BiomeDatasetCollector.Capture.Chat.AutoCaptureEnabled"
+                : "Mods.BiomeDatasetCollector.Capture.Chat.AutoCaptureDisabled"));
         }
     }
 
@@ -70,7 +73,7 @@ public sealed class CapturePlayer : ModPlayer
             {
                 _debugTimer = 0;
                 string debugBiome = BiomeClassifier.GetBiome(Player);
-                Main.NewText($"Biome: {debugBiome}");
+                Main.NewText(Language.GetTextValue("Mods.BiomeDatasetCollector.Capture.Chat.DebugBiome", debugBiome));
             }
         }
 
@@ -125,7 +128,9 @@ public sealed class CapturePlayer : ModPlayer
         _lastConfigAutoCaptureEnabled = config.AutoCaptureEnabled;
         _autoCaptureEnabled = config.AutoCaptureEnabled;
         _autoCaptureTimer = 0;
-        Main.NewText(_autoCaptureEnabled ? "Auto-capture enabled" : "Auto-capture disabled");
+        Main.NewText(Language.GetTextValue(_autoCaptureEnabled
+            ? "Mods.BiomeDatasetCollector.Capture.Chat.AutoCaptureEnabled"
+            : "Mods.BiomeDatasetCollector.Capture.Chat.AutoCaptureDisabled"));
     }
 
     private bool IsLocalActivePlayer()

@@ -1,4 +1,5 @@
 using Terraria.ModLoader;
+using Terraria.Localization;
 
 namespace BiomeDatasetCollector;
 
@@ -10,8 +11,8 @@ public sealed class BiomeDatasetCollector : Mod
 
     public override void Load()
     {
-        CaptureKeybind = KeybindLoader.RegisterKeybind(this, "Capture Dataset Screenshot", "F9");
-        ToggleAutoKeybind = KeybindLoader.RegisterKeybind(this, "Toggle Auto Capture", "F10");
+        CaptureKeybind = KeybindLoader.RegisterKeybind(this, Language.GetTextValue("Mods.BiomeDatasetCollector.Keybinds.CaptureDatasetScreenshot"), "F9");
+        ToggleAutoKeybind = KeybindLoader.RegisterKeybind(this, Language.GetTextValue("Mods.BiomeDatasetCollector.Keybinds.ToggleAutoCapture"), "F10");
     }
 
     public override void Unload()
