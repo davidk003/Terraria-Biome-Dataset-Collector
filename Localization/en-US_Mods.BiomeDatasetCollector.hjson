@@ -1,0 +1,20 @@
+Mods: {
+  BiomeDatasetCollector: {
+    DisplayName: Biome Dataset Collector
+    Description: Phase 1 placeholder localization.
+
+    Configs: {
+      CaptureConfig: {
+        DisplayName: Capture Config
+      }
+    }
+
+    Commands: {
+      DatasetCommand: {
+        Command: dataset
+        Usage: /dataset
+        Description: Placeholder command.
+      }
+    }
+  }
+}
