@@ -1,86 +1,118 @@
-Mods: {
-  BiomeDatasetCollector: {
-    DisplayName: "Biome Dataset Collector"
-    Description: "Collect biome screenshots and metadata for dataset creation."
+{
+  DisplayName: "Biome Dataset Collector"
+  Description: "Collect biome screenshots and metadata for dataset creation."
 
-    Configs: {
-      CaptureConfig: {
-        DisplayName: "Capture Config"
+  Configs: {
+    CaptureConfig: {
+      DisplayName: "Capture Config"
+    }
+  }
+
+  Commands: {
+    DatasetCommand: {
+      Command: "dataset"
+      Usage: "/dataset status|clean|zip|merge <path>|ui"
+      Description: "Manage biome dataset captures, archives, and imports."
+      Help: "Usage: /dataset status|clean|zip|merge <path>|ui. 'clean' requires '/dataset clean confirm'."
+      UnknownSubcommand: "Unknown subcommand '{0}'."
+      StatusNoDataset: "No dataset folder found at: {0}"
+      StatusHeader: "Dataset root: {0}"
+      StatusSummary: "Images: {0} | CSV rows: {1} | Size: {2} MB"
+      StatusNoCaptures: "No capture images found yet."
+      StatusBiomeHeader: "Per-biome image counts:"
+      StatusBiomeLine: "{0}: {1}"
+      StatusConsistencyOk: "CSV and image counts match."
+      StatusConsistencyMismatch: "Count mismatch - CSV rows: {0}, images: {1}."
+      StatusCsvReadWarning: "Could not read CSV row count: {0}"
+      StatusError: "Failed to read dataset status: {0}"
+      CleanConfirmMissing: "No clean operation is pending. Run '/dataset clean' first, then '/dataset clean confirm'."
+      CleanDone: "Dataset cleaned and reset at: {0}"
+      CleanError: "Failed to clean dataset: {0}"
+      CleanPending: "This will delete all captures. Run '/dataset clean confirm' to continue."
+      OperationInProgress: "Another dataset operation is already running."
+      ZipStarted: "Starting dataset zip export..."
+      ZipNoDataset: "Cannot zip: dataset folder does not exist at {0}"
+      ZipDiskSpaceError: "Not enough disk space to create zip: {0}"
+      ZipSuccess: "Zip created: {0} ({1} MB). Free space before zip: {2} MB"
+      ZipError: "Failed to zip dataset: {0}"
+      MergeMissingPath: "Missing merge path. Example: /dataset merge C:/path/to/BiomeCaptures_20260101_010203.zip"
+      MergeStarted: "Starting merge from: {0}"
+      MergePathNotFound: "Merge source not found: {0}"
+      MergeDiskSpaceError: "Not enough disk space to merge: {0}"
+      MergeError: "Merge failed: {0}"
+      MergeSuccess: "Merge complete. Added {0}, skipped {1} (already in dataset or invalid)."
+      DiskSpaceDetail: "Need {0} MB, but only {1} MB is available."
+      DiskSpaceUnknown: "Could not verify disk space: {0}"
+      UiOpened: "Dataset panel opened."
+      UiClosed: "Dataset panel closed."
+    }
+  }
+
+  UI: {
+    Panel: {
+      Title: "Biome Capture Mod Panel"
+      CloseButton: "Close"
+      StatusButton: "Show Status"
+      ZipButton: "Create Zip"
+      MergeLatestButton: "Merge Latest Zip"
+      CleanButton: "Clean (Step 1)"
+      CleanConfirmButton: "Confirm Clean"
+      HintLinePrimary: "Shortcuts: {0} capture, {1} auto capture."
+      HintLineSecondary: "Toggle panel with {0}."
+      LiveNoDatasetLine: "No dataset found yet. Capture one screenshot to create it."
+      LiveSummaryLine: "Images: {0} | CSV rows: {1} | Size: {2} MB"
+      LiveSummaryErrorLine: "Status refresh failed: {0}"
+      LiveBiomeHeader: "Per-biome image counts:"
+      LiveBiomeEntry: "{0}: {1}"
+      LiveBiomePairEntry: "{0} | {1}"
+      LiveBiomeNone: "No biome images captured yet."
+      LiveBiomeUnavailable: "Counts unavailable right now."
+      LiveCsvUnknown: "?"
+      NoArchiveFound: "No BiomeCaptures_*.zip found in: {0}"
+      MergeLatestSelected: "Merging latest archive: {0}"
+      UiOperationError: "Dataset panel operation failed: {0}"
+    }
+  }
+
+  Capture: {
+    Chat: {
+      AutoCaptureEnabled: "Auto-capture enabled"
+      AutoCaptureDisabled: "Auto-capture disabled"
+      SuccessWithCount: "Captured {0} #{1}"
+
+      DebugBiome: "Biome: {0}"
+
+      Blocked: {
+        AllowedResolutionListEmpty: "Capture blocked: allowed resolution list is empty."
+        ResolutionNotAllowed: "Capture blocked: current resolution is {0}x{1}. Allowed values: {2}"
+      }
+
+      Failure: {
+        FrameRead: "Capture failed: could not read frame data ({0})."
+        PngEncode: "Capture failed: could not encode PNG."
+        FileWrite: "Capture failed: could not write screenshot file."
+        CsvAppend: "Capture failed: could not append CSV row."
+        Unknown: "Capture failed due to an unexpected error."
       }
     }
+  }
 
-    Commands: {
-      DatasetCommand: {
-        Command: "dataset"
-        Usage: "/dataset status|clean|zip|merge <path>"
-        Description: "Manage biome dataset captures, archives, and imports."
-        Help: "Usage: /dataset status|clean|zip|merge <path>. 'clean' requires '/dataset clean confirm'."
-        UnknownSubcommand: "Unknown subcommand '{0}'."
-        StatusNoDataset: "No dataset folder found at: {0}"
-        StatusHeader: "Dataset: {0} | Images: {1} | Size: {2} MB"
-        StatusBiomeLine: "{0}: {1} screenshots"
-        StatusError: "Failed to read dataset status: {0}"
-        CleanConfirmMissing: "No clean operation is pending. Run '/dataset clean' first, then '/dataset clean confirm'."
-        CleanDone: "Dataset cleaned and reset at: {0}"
-        CleanError: "Failed to clean dataset: {0}"
-        CleanPending: "This will delete all captures. Run '/dataset clean confirm' to continue."
-        OperationInProgress: "Another dataset operation is already running."
-        ZipStarted: "Starting dataset zip export..."
-        ZipNoDataset: "Cannot zip: dataset folder does not exist at {0}"
-        ZipDiskSpaceError: "Not enough disk space to create zip: {0}"
-        ZipSuccess: "Zip created: {0} ({1} MB). Free space before zip: {2} MB"
-        ZipError: "Failed to zip dataset: {0}"
-        MergeMissingPath: "Missing merge path. Example: /dataset merge C:/path/to/BiomeCaptures_20260101_010203.zip"
-        MergeStarted: "Starting merge from: {0}"
-        MergePathNotFound: "Merge source not found: {0}"
-        MergeDiskSpaceError: "Not enough disk space to merge: {0}"
-        MergeError: "Merge failed: {0}"
-        MergeSuccess: "Merge complete. Added {0}, skipped {1} (already in dataset or invalid)."
-        DiskSpaceDetail: "Need {0} MB, but only {1} MB is available."
-        DiskSpaceUnknown: "Could not verify disk space: {0}"
-      }
-    }
+  CsvLogger: {
+    AppendFailed: "Failed to append capture record to captures.csv."
+    ReadUuidsFailed: "Failed to read UUIDs from captures.csv."
+    ReadAllFailed: "Failed to read capture records from captures.csv."
+    WriteAllFailed: "Failed to write capture records to captures.csv."
+    MergeSourceEmpty: "Merge source path is empty."
+    MergeSourceMissing: "Merge source does not exist: {0}"
+    MergeArchiveMissingCsv: "No captures.csv found in archive: {0}"
+    MergeFailed: "Failed to merge dataset from: {0}"
+    SchemaValidationFailed: "Failed to validate CSV schema at: {0}"
+    UnexpectedHeader: "CSV schema mismatch detected in: {0}"
+    ZipSlipBlocked: "Merge aborted: archive entry path is unsafe: {0}"
+  }
 
-    Capture: {
-      Chat: {
-        AutoCaptureEnabled: "Auto-capture enabled"
-        AutoCaptureDisabled: "Auto-capture disabled"
-        SuccessWithCount: "Captured {0} #{1}"
-
-        DebugBiome: "Biome: {0}"
-
-        Blocked: {
-          AllowedResolutionListEmpty: "Capture blocked: allowed resolution list is empty."
-          ResolutionNotAllowed: "Capture blocked: current resolution is {0}x{1}. Allowed values: {2}"
-        }
-
-        Failure: {
-          FrameRead: "Capture failed: could not read frame data ({0})."
-          PngEncode: "Capture failed: could not encode PNG."
-          FileWrite: "Capture failed: could not write screenshot file."
-          CsvAppend: "Capture failed: could not append CSV row."
-          Unknown: "Capture failed due to an unexpected error."
-        }
-      }
-    }
-
-    CsvLogger: {
-      AppendFailed: "Failed to append capture record to captures.csv."
-      ReadUuidsFailed: "Failed to read UUIDs from captures.csv."
-      ReadAllFailed: "Failed to read capture records from captures.csv."
-      WriteAllFailed: "Failed to write capture records to captures.csv."
-      MergeSourceEmpty: "Merge source path is empty."
-      MergeSourceMissing: "Merge source does not exist: {0}"
-      MergeArchiveMissingCsv: "No captures.csv found in archive: {0}"
-      MergeFailed: "Failed to merge dataset from: {0}"
-      SchemaValidationFailed: "Failed to validate CSV schema at: {0}"
-      UnexpectedHeader: "CSV schema mismatch detected in: {0}"
-      ZipSlipBlocked: "Merge aborted: archive entry path is unsafe: {0}"
-    }
-
-    Keybinds: {
-      CaptureDatasetScreenshot: "Capture Dataset Screenshot"
-      ToggleAutoCapture: "Toggle Auto Capture"
-    }
+  Keybinds: {
+    CaptureDatasetScreenshot.DisplayName: "Capture Dataset Screenshot"
+    ToggleAutoCapture.DisplayName: "Toggle Auto Capture"
   }
 }

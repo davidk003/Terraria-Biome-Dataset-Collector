@@ -156,7 +156,11 @@ public sealed class CaptureSystem : ModSystem
                 }
 
                 int count = IncrementCaptureCount(record.Biome);
-                Main.QueueMainThreadAction(() => Main.NewText(Language.GetTextValue("Mods.BiomeDatasetCollector.Capture.Chat.SuccessWithCount", record.Biome, count)));
+                Main.QueueMainThreadAction(() =>
+                {
+                    DatasetUiSystem.NotifyCaptureSaved(record.Biome);
+                    Main.NewText(Language.GetTextValue("Mods.BiomeDatasetCollector.Capture.Chat.SuccessWithCount", record.Biome, count));
+                });
             }
             catch (Exception ex)
             {

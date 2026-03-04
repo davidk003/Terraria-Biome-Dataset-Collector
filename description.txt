@@ -5,6 +5,7 @@ Use `/dataset` to manage dataset files:
 - `/dataset clean` starts a destructive reset (run `/dataset clean confirm` to execute).
 - `/dataset zip` exports the dataset directory to a timestamped zip file.
 - `/dataset merge <path>` merges a dataset zip (or external captures.csv path) into the current output.
+- `/dataset ui` opens a panel with buttons for status/zip/merge-latest/clean actions.
 
 Important capture warning:
 - Keep a fixed game resolution during a capture session. Mixing resolutions creates inconsistent training data.

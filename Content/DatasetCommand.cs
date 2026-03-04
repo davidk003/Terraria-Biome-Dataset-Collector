@@ -14,25 +14,12 @@ namespace BiomeDatasetCollector.Content;
 public sealed class DatasetCommand : ModCommand
 {
     private const string KeyPrefix = "Mods.BiomeDatasetCollector.Commands.DatasetCommand";
-    private static readonly string[] KnownBiomes =
-    {
-        "Hell",
-        "Dungeon",
-        "Mushroom",
-        "Jungle",
-        "Corruption",
-        "Crimson",
-        "Hallow",
-        "Desert",
-        "Snow",
-        "Ocean",
-        "Space",
-        "Underground",
-        "Forest",
-    };
-
     private static int _operationInProgress;
     private static bool _cleanConfirmationPending;
+
+    public static bool IsOperationInProgress => Interlocked.CompareExchange(ref _operationInProgress, 0, 0) == 1;
+
+    public static bool IsCleanConfirmationPending => _cleanConfirmationPending;
 
     public override string Command => "dataset";
 
@@ -69,11 +56,46 @@ public sealed class DatasetCommand : ModCommand
                 HandleMerge(args, input);
                 return;
 
+            case "ui":
+                HandleUiToggle();
+                return;
+
             default:
                 Main.NewText(T($"{KeyPrefix}.UnknownSubcommand", subcommand));
                 Main.NewText(T($"{KeyPrefix}.Help"));
                 return;
         }
+    }
+
+    public static void RunStatusFromUi()
+    {
+        HandleStatus();
+    }
+
+    public static void RunCleanFromUi()
+    {
+        HandleClean(new[] { "clean" });
+    }
+
+    public static void RunCleanConfirmFromUi()
+    {
+        HandleClean(new[] { "clean", "confirm" });
+    }
+
+    public static void RunZipFromUi()
+    {
+        HandleZip();
+    }
+
+    public static void RunMergeFromUi(string mergePath)
+    {
+        if (string.IsNullOrWhiteSpace(mergePath))
+        {
+            Main.NewText(T($"{KeyPrefix}.MergeMissingPath"));
+            return;
+        }
+
+        HandleMerge(new[] { "merge", mergePath }, $"dataset merge {mergePath}");
     }
 
     private static void HandleStatus()
@@ -96,18 +118,55 @@ public sealed class DatasetCommand : ModCommand
             }
 
             double totalMb = totalBytes / (1024d * 1024d);
+            bool csvCountReady = TryGetCsvRowCount(out int csvRows, out string csvError);
+            string csvRowsText = csvCountReady ? csvRows.ToString(CultureInfo.InvariantCulture) : "?";
 
-            Main.NewText(T($"{KeyPrefix}.StatusHeader", root, totalImages, totalMb.ToString("F2", CultureInfo.InvariantCulture)));
+            Main.NewText(T($"{KeyPrefix}.StatusHeader", root));
+            Main.NewText(T($"{KeyPrefix}.StatusSummary", totalImages, csvRowsText, totalMb.ToString("F2", CultureInfo.InvariantCulture)));
+
+            if (totalImages <= 0)
+            {
+                Main.NewText(T($"{KeyPrefix}.StatusNoCaptures"));
+            }
+            else
+            {
+                Main.NewText(T($"{KeyPrefix}.StatusBiomeHeader"));
+            }
 
             foreach (KeyValuePair<string, int> pair in counts)
             {
-                Main.NewText(T($"{KeyPrefix}.StatusBiomeLine", pair.Key, pair.Value));
+                if (pair.Value > 0)
+                {
+                    Main.NewText(T($"{KeyPrefix}.StatusBiomeLine", pair.Key, pair.Value));
+                }
+            }
+
+            if (csvCountReady)
+            {
+                if (csvRows == totalImages)
+                {
+                    Main.NewText(T($"{KeyPrefix}.StatusConsistencyOk"));
+                }
+                else
+                {
+                    Main.NewText(T($"{KeyPrefix}.StatusConsistencyMismatch", csvRows, totalImages));
+                }
+            }
+            else
+            {
+                Main.NewText(T($"{KeyPrefix}.StatusCsvReadWarning", csvError));
             }
         }
         catch (Exception ex)
         {
             Main.NewText(T($"{KeyPrefix}.StatusError", ex.Message));
         }
+    }
+
+    private static void HandleUiToggle()
+    {
+        DatasetUiSystem.TogglePanel();
+        Main.NewText(T(DatasetUiSystem.IsVisible ? $"{KeyPrefix}.UiOpened" : $"{KeyPrefix}.UiClosed"));
     }
 
     private static void HandleClean(string[] args)
@@ -137,10 +196,12 @@ public sealed class DatasetCommand : ModCommand
 
                 _cleanConfirmationPending = false;
                 Main.NewText(T($"{KeyPrefix}.CleanDone", root));
+                DatasetUiSystem.NotifyDatasetMutated();
             }
             catch (Exception ex)
             {
                 Main.NewText(T($"{KeyPrefix}.CleanError", ex.Message));
+                DatasetUiSystem.NotifyDatasetMutated();
             }
 
             return;
@@ -196,6 +257,7 @@ public sealed class DatasetCommand : ModCommand
             finally
             {
                 EndOperation();
+                DatasetUiSystem.NotifyDatasetMutated();
             }
         });
     }
@@ -246,6 +308,7 @@ public sealed class DatasetCommand : ModCommand
             finally
             {
                 EndOperation();
+                DatasetUiSystem.NotifyDatasetMutated();
             }
         });
     }
@@ -253,7 +316,7 @@ public sealed class DatasetCommand : ModCommand
     private static Dictionary<string, int> BuildBiomeCounts(string root)
     {
         Dictionary<string, int> counts = new(StringComparer.OrdinalIgnoreCase);
-        foreach (string biome in KnownBiomes)
+        foreach (string biome in DatasetBiomes.Ordered)
         {
             counts[biome] = 0;
         }
@@ -349,6 +412,24 @@ public sealed class DatasetCommand : ModCommand
         }
     }
 
+    private static bool TryGetCsvRowCount(out int rowCount, out string error)
+    {
+        rowCount = 0;
+        error = string.Empty;
+
+        try
+        {
+            List<CaptureRecord> records = CsvLogger.ReadAll();
+            rowCount = records.Count;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
     private static void DeleteDatasetContents(string root)
     {
         foreach (string file in Directory.GetFiles(root, "*", SearchOption.TopDirectoryOnly))
@@ -364,7 +445,7 @@ public sealed class DatasetCommand : ModCommand
 
     private static void CreateBiomeDirectories(string root)
     {
-        foreach (string biome in KnownBiomes)
+        foreach (string biome in DatasetBiomes.Ordered)
         {
             Directory.CreateDirectory(Path.Combine(root, biome));
         }
