@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Terraria;
+using Terraria.Localization;
 using Terraria.ModLoader;
 
 namespace BiomeDatasetCollector.Content;
@@ -15,8 +16,10 @@ public sealed class CaptureSystem : ModSystem
     private static readonly SemaphoreSlim FileWriteSemaphore = new(3, 3);
     private static readonly object RequestLock = new();
     private static readonly object UuidLock = new();
+    private static readonly object CountLock = new();
 
     private static HashSet<string>? _knownUuids;
+    private static Dictionary<string, int>? _captureCountsByBiome;
     private static string _pendingBiome;
     private static long _lastErrorTickMs;
     private static long _lastBlockedTickMs;
@@ -50,15 +53,15 @@ public sealed class CaptureSystem : ModSystem
         CaptureConfig config = ModContent.GetInstance<CaptureConfig>();
         int requestedWidth = Main.screenWidth;
         int requestedHeight = Main.screenHeight;
-        if (!IsResolutionAllowed(config, requestedWidth, requestedHeight, out string blockedMessage))
+        if (!IsResolutionAllowed(config, requestedWidth, requestedHeight, out string blockedKey, out object[] blockedArgs))
         {
-            ReportCaptureBlocked(blockedMessage);
+            ReportCaptureBlocked(blockedKey, blockedArgs);
             return;
         }
 
         if (!TryReadCurrentFrame(out Color[] pixels, out int width, out int height, out string sourceKind, out Exception error))
         {
-            ReportCaptureError($"Frame read failed ({sourceKind})", error);
+            ReportCaptureError("Capture.Chat.Failure.FrameRead", error, sourceKind);
             return;
         }
 
@@ -94,12 +97,18 @@ public sealed class CaptureSystem : ModSystem
         {
             _pendingBiome = null;
         }
+
+        lock (CountLock)
+        {
+            _captureCountsByBiome = null;
+        }
     }
 
     public override void Unload()
     {
         _knownUuids = null;
         _pendingBiome = null;
+        _captureCountsByBiome = null;
     }
 
     private static void EncodeAndQueueSave(Color[] pixels, int width, int height, string outputPath, string biomeDirectory, CaptureRecord record)
@@ -116,7 +125,7 @@ public sealed class CaptureSystem : ModSystem
         }
         catch (Exception ex)
         {
-            ReportCaptureError("PNG encode failed", ex);
+            ReportCaptureError("Capture.Chat.Failure.PngEncode", ex);
             return;
         }
 
@@ -125,14 +134,37 @@ public sealed class CaptureSystem : ModSystem
             await FileWriteSemaphore.WaitAsync();
             try
             {
-                Directory.CreateDirectory(biomeDirectory);
-                await File.WriteAllBytesAsync(outputPath, pngBytes);
-                CsvLogger.Append(record);
-                Main.QueueMainThreadAction(() => Main.NewText($"Captured {record.Biome}: {record.Uuid}"));
+                try
+                {
+                    Directory.CreateDirectory(biomeDirectory);
+                    await File.WriteAllBytesAsync(outputPath, pngBytes);
+                }
+                catch (Exception ex)
+                {
+                    ReportCaptureError("Capture.Chat.Failure.FileWrite", ex);
+                    return;
+                }
+
+                try
+                {
+                    CsvLogger.Append(record);
+                }
+                catch (Exception ex)
+                {
+                    ReportCaptureError("Capture.Chat.Failure.CsvAppend", ex);
+                    return;
+                }
+
+                int count = IncrementCaptureCount(record.Biome);
+                Main.QueueMainThreadAction(() =>
+                {
+                    DatasetUiSystem.NotifyCaptureSaved(record.Biome);
+                    Main.NewText(Language.GetTextValue("Mods.BiomeDatasetCollector.Capture.Chat.SuccessWithCount", record.Biome, count));
+                });
             }
             catch (Exception ex)
             {
-                ReportCaptureError("Capture file write failed", ex);
+                ReportCaptureError("Capture.Chat.Failure.Unknown", ex);
             }
             finally
             {
@@ -200,9 +232,10 @@ public sealed class CaptureSystem : ModSystem
         }
     }
 
-    private static bool IsResolutionAllowed(CaptureConfig config, int width, int height, out string blockedMessage)
+    private static bool IsResolutionAllowed(CaptureConfig config, int width, int height, out string blockedKey, out object[] blockedArgs)
     {
-        blockedMessage = string.Empty;
+        blockedKey = string.Empty;
+        blockedArgs = Array.Empty<object>();
         if (!config.RestrictCaptureResolution)
         {
             return true;
@@ -212,7 +245,7 @@ public sealed class CaptureSystem : ModSystem
         string[] tokens = allowedText.Split(new[] { ',', ';', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         if (tokens.Length == 0)
         {
-            blockedMessage = "Allowed resolutions list is empty";
+            blockedKey = "Capture.Chat.Blocked.AllowedResolutionListEmpty";
             return false;
         }
 
@@ -224,7 +257,8 @@ public sealed class CaptureSystem : ModSystem
             }
         }
 
-        blockedMessage = $"Resolution {width}x{height} not allowed ({allowedText})";
+        blockedKey = "Capture.Chat.Blocked.ResolutionNotAllowed";
+        blockedArgs = new object[] { width, height, allowedText };
         return false;
     }
 
@@ -315,11 +349,54 @@ public sealed class CaptureSystem : ModSystem
         return new string(buffer).Trim();
     }
 
-    private static void ReportCaptureError(string context, Exception ex)
+    private static int IncrementCaptureCount(string biome)
+    {
+        lock (CountLock)
+        {
+            EnsureCaptureCountsLoaded();
+            _captureCountsByBiome.TryGetValue(biome, out int current);
+            int next = current + 1;
+            _captureCountsByBiome[biome] = next;
+            return next;
+        }
+    }
+
+    private static void EnsureCaptureCountsLoaded()
+    {
+        if (_captureCountsByBiome is not null)
+        {
+            return;
+        }
+
+        Dictionary<string, int> counts = new(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            List<CaptureRecord> records = CsvLogger.ReadAll();
+            foreach (CaptureRecord record in records)
+            {
+                string key = record.Biome ?? string.Empty;
+                if (key.Length == 0)
+                {
+                    continue;
+                }
+
+                counts.TryGetValue(key, out int value);
+                counts[key] = value + 1;
+            }
+        }
+        catch
+        {
+            counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        _captureCountsByBiome = counts;
+    }
+
+    private static void ReportCaptureError(string messageKey, Exception ex, params object[] args)
     {
         try
         {
-            ModContent.GetInstance<BiomeDatasetCollector>().Logger.Warn($"{context}: {ex.Message}");
+            ModContent.GetInstance<BiomeDatasetCollector>().Logger.Warn($"{messageKey}: {ex.Message}");
         }
         catch
         {
@@ -333,10 +410,10 @@ public sealed class CaptureSystem : ModSystem
         }
 
         Interlocked.Exchange(ref _lastErrorTickMs, now);
-        Main.QueueMainThreadAction(() => Main.NewText($"Capture failed: {context}"));
+        Main.QueueMainThreadAction(() => Main.NewText(Language.GetTextValue($"Mods.BiomeDatasetCollector.{messageKey}", args)));
     }
 
-    private static void ReportCaptureBlocked(string message)
+    private static void ReportCaptureBlocked(string messageKey, params object[] args)
     {
         long now = Environment.TickCount64;
         long last = Interlocked.Read(ref _lastBlockedTickMs);
@@ -346,6 +423,6 @@ public sealed class CaptureSystem : ModSystem
         }
 
         Interlocked.Exchange(ref _lastBlockedTickMs, now);
-        Main.NewText($"Capture skipped: {message}");
+        Main.NewText(Language.GetTextValue($"Mods.BiomeDatasetCollector.{messageKey}", args));
     }
 }

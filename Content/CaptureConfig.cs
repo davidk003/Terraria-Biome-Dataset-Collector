@@ -43,6 +43,11 @@ public sealed class CaptureConfig : ModConfig
     [DefaultValue("1920x1080")]
     public string AllowedResolutions { get; set; } = "1920x1080";
 
+    [Label("Open Status Panel On World Load")]
+    [Tooltip("If enabled, the floating dataset status panel opens automatically when entering a world.")]
+    [DefaultValue(true)]
+    public bool OpenStatusPanelOnWorldLoad { get; set; } = true;
+
     public static string ResolveOutputRootDirectory()
     {
         try

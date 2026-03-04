@@ -10,8 +10,8 @@ public sealed class BiomeDatasetCollector : Mod
 
     public override void Load()
     {
-        CaptureKeybind = KeybindLoader.RegisterKeybind(this, "Capture Dataset Screenshot", "F9");
-        ToggleAutoKeybind = KeybindLoader.RegisterKeybind(this, "Toggle Auto Capture", "F10");
+        CaptureKeybind = KeybindLoader.RegisterKeybind(this, "CaptureDatasetScreenshot", "F9");
+        ToggleAutoKeybind = KeybindLoader.RegisterKeybind(this, "ToggleAutoCapture", "F10");
     }
 
     public override void Unload()

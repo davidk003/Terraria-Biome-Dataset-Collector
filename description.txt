@@ -1,1 +1,16 @@
 Collect biome-related world data to build datasets for analysis and tooling.
+
+Use `/dataset` to manage dataset files:
+- `/dataset status` shows dataset location, size, and per-biome counts.
+- `/dataset clean` starts a destructive reset (run `/dataset clean confirm` to execute).
+- `/dataset zip` exports the dataset directory to a timestamped zip file.
+- `/dataset merge <path>` merges a dataset zip (or external captures.csv path) into the current output.
+- `/dataset ui` opens a panel with buttons for status/zip/merge-latest/clean actions.
+
+Important capture warning:
+- Keep a fixed game resolution during a capture session. Mixing resolutions creates inconsistent training data.
+
+Deploy steps:
+1) Develop and test in this repository.
+2) Copy the mod folder into your tModLoader `ModSources` directory.
+3) Build and reload the mod in tModLoader.
