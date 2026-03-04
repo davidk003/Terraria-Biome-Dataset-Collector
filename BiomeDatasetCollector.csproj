@@ -5,4 +5,11 @@
     <AssemblyName>BiomeDatasetCollector</AssemblyName>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="StbImageWriteSharp">
+      <HintPath>lib\StbImageWriteSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
 </Project>

@@ -193,6 +193,7 @@ public sealed class DatasetCommand : ModCommand
                 DeleteDatasetContents(root);
                 CreateBiomeDirectories(root);
                 ResetCsvViaLogger();
+                CaptureSystem.InvalidateMetadataCache();
 
                 _cleanConfirmationPending = false;
                 Main.NewText(T($"{KeyPrefix}.CleanDone", root));
@@ -299,6 +300,7 @@ public sealed class DatasetCommand : ModCommand
                 }
 
                 (int added, int skipped) = CsvLogger.MergeFrom(fullPath);
+                CaptureSystem.InvalidateMetadataCache();
                 QueueText($"{KeyPrefix}.MergeSuccess", added, skipped);
             }
             catch (Exception ex)
