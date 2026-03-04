@@ -1,5 +1,7 @@
 # Biome Dataset Collector (tModLoader)
 
+<img width="470" height="496" alt="image" src="https://github.com/user-attachments/assets/bd2ab654-4adb-40e7-9969-48163e56aed0" />
+
 Biome Dataset Collector helps you build labeled Terraria screenshot datasets for ML/CNN workflows.
 It captures the current biome, saves a PNG, and appends metadata to `captures.csv`.
 
