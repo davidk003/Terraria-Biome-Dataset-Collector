@@ -85,6 +85,7 @@
       Blocked: {
         AllowedResolutionListEmpty: "Capture blocked: allowed resolution list is empty."
         ResolutionNotAllowed: "Capture blocked: current resolution is {0}x{1}. Allowed values: {2}"
+        SaveQueueFull: "Capture skipped: save queue is full ({0} pending)."
       }
 
       Failure: {

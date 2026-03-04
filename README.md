@@ -117,6 +117,7 @@ The classifier uses a strict priority order for overlapping zones.
 - Merge fails: verify the zip includes `captures.csv` and valid paths.
 - Disk space errors on zip/merge: free space and retry.
 - Count mismatch (`status`): run status again after operations finish; compare CSV and image counts.
+- Build error `Missing dll reference ... StbImageWriteSharp.dll`: ensure `lib/StbImageWriteSharp.dll` is present in `ModSources/BiomeDatasetCollector/lib/` and `build.txt` contains `dllReferences = StbImageWriteSharp` (without `.dll`).
 
 ## For Testers and Contributors
 
@@ -134,6 +135,7 @@ If you want to help test or improve the mod, this section is for you.
 
 1. Develop in this repository.
 2. Copy/sync to your tModLoader `ModSources/BiomeDatasetCollector` folder.
-3. Build with tModLoader's `Build + Reload`.
+3. Make sure the `lib/` folder is synced too (it contains `StbImageWriteSharp.dll`, required for build/runtime).
+4. Build with tModLoader's `Build + Reload`.
 
 Note: `dotnet build` outside `ModSources` may fail because `tModLoader.targets` is not present in a standalone repo checkout.
