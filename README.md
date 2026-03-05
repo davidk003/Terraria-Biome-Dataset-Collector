@@ -12,8 +12,8 @@ It captures the current biome, saves a PNG, and appends metadata to `captures.cs
 - World-only capture timing (no HUD/UI in intended captures)
 - Biome-labeled folder output
 - CSV metadata logging for each image
-- Dataset commands: status, clean, zip, merge, UI toggle
-- Floating in-game panel with live totals and per-biome counts
+- Dataset commands: status, clean, zip, merge, sync, UI toggle
+- Floating in-game panel with live totals, per-biome counts, and quick action buttons
 
 ## Quick Start (Users)
 
@@ -44,6 +44,7 @@ Use `/dataset` with one of these subcommands:
 - `/dataset clean confirm` - Confirm and execute cleanup.
 - `/dataset zip` - Export dataset to timestamped zip.
 - `/dataset merge <path>` - Merge from a zip (or external `captures.csv`) with UUID dedup.
+- `/dataset sync` - Remove CSV rows whose image files no longer exist; also report orphan images that are missing CSV rows.
 - `/dataset ui` - Toggle the floating panel.
 
 If your merge path has spaces, wrap it in quotes.
@@ -110,6 +111,7 @@ The classifier uses a strict priority order for overlapping zones.
 
 - Keep a fixed game resolution during a capture session.
 - Use `/dataset status` to monitor per-biome class balance.
+- If you manually delete bad/boundary images, run `/dataset sync` afterward to keep `captures.csv` aligned with disk.
 - Prefer multiple worlds and times of day for diversity.
 - Avoid very fast intervals if your machine starts stuttering.
 
@@ -118,7 +120,7 @@ The classifier uses a strict priority order for overlapping zones.
 - Controls show `<Unbound>`: open Mod Controls, use Reset to Default; if both were unbound, the mod also attempts a one-time auto-fix.
 - Merge fails: verify the zip includes `captures.csv` and valid paths.
 - Disk space errors on zip/merge: free space and retry.
-- Count mismatch (`status`): run status again after operations finish; compare CSV and image counts.
+- Count mismatch (`status`): run `/dataset sync` to drop rows for missing files, then run status again.
 - Build error `Missing dll reference ... StbImageWriteSharp.dll`: ensure `lib/StbImageWriteSharp.dll` is present in `ModSources/BiomeDatasetCollector/lib/` and `build.txt` contains `dllReferences = StbImageWriteSharp` (without `.dll`).
 
 ## For Testers and Contributors
@@ -132,6 +134,7 @@ If you want to help test or improve the mod, this section is for you.
 3. Perform zip -> clean confirm -> merge roundtrip and verify counts/dedup.
 4. Validate overlap biome cases (corrupted snow, hallowed desert, underground jungle).
 5. Check panel live per-biome counts update behavior after rapid captures.
+6. Manually delete a few captured PNGs, run `/dataset sync`, and verify CSV row count and sync report output.
 
 ### Local dev/build workflow
 
