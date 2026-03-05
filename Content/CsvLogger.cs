@@ -25,6 +25,37 @@ public struct CaptureRecord
     public int ScreenHeight;
 }
 
+public readonly struct CsvSyncResult
+{
+    public int RemainingRows { get; }
+
+    public int RemovedRows { get; }
+
+    public int MalformedRowsDropped { get; }
+
+    public IReadOnlyDictionary<string, int> RemovedRowsByBiome { get; }
+
+    public int OrphanImageCount { get; }
+
+    public IReadOnlyDictionary<string, int> OrphanImagesByBiome { get; }
+
+    public CsvSyncResult(
+        int remainingRows,
+        int removedRows,
+        int malformedRowsDropped,
+        IReadOnlyDictionary<string, int> removedRowsByBiome,
+        int orphanImageCount,
+        IReadOnlyDictionary<string, int> orphanImagesByBiome)
+    {
+        RemainingRows = remainingRows;
+        RemovedRows = removedRows;
+        MalformedRowsDropped = malformedRowsDropped;
+        RemovedRowsByBiome = removedRowsByBiome;
+        OrphanImageCount = orphanImageCount;
+        OrphanImagesByBiome = orphanImagesByBiome;
+    }
+}
+
 public static class CsvLogger
 {
     private const string KeyPrefix = "Mods.BiomeDatasetCollector.CsvLogger";
@@ -144,6 +175,89 @@ public static class CsvLogger
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             throw new IOException(T("WriteAllFailed"), ex);
+        }
+        finally
+        {
+            AppendLock.Release();
+        }
+    }
+
+    public static CsvSyncResult SyncWithDisk()
+    {
+        AppendLock.Wait();
+        try
+        {
+            string root = CaptureConfig.ResolveOutputRootDirectory();
+            Directory.CreateDirectory(root);
+
+            string csvPath = Path.Combine(root, "captures.csv");
+            EnsureCsvReady(csvPath);
+
+            List<CaptureRecord> records = ReadRecordsFromCsv(csvPath, requireExpectedHeader: false, out int malformedRows);
+            List<CaptureRecord> keptRecords = new(records.Count);
+            Dictionary<string, int> removedRowsByBiome = new(StringComparer.OrdinalIgnoreCase);
+
+            foreach (CaptureRecord record in records)
+            {
+                if (TryBuildPathUnderRoot(root, record.Filename, out string imagePath) && File.Exists(imagePath))
+                {
+                    keptRecords.Add(record);
+                    continue;
+                }
+
+                IncrementCount(removedRowsByBiome, ResolveBiomeNameForRecord(record));
+            }
+
+            int removedRows = records.Count - keptRecords.Count;
+            if (removedRows > 0 || malformedRows > 0)
+            {
+                WriteRecordsAtomic(csvPath, keptRecords);
+            }
+
+            HashSet<string> csvImagePaths = new(StringComparer.OrdinalIgnoreCase);
+            foreach (CaptureRecord record in keptRecords)
+            {
+                string normalizedPath = NormalizeCsvPath(record.Filename);
+                if (normalizedPath.Length > 0)
+                {
+                    csvImagePaths.Add(normalizedPath);
+                }
+            }
+
+            Dictionary<string, int> orphanImagesByBiome = new(StringComparer.OrdinalIgnoreCase);
+            int orphanImageCount = 0;
+            foreach (string imagePath in Directory.GetFiles(root, "*.png", SearchOption.AllDirectories))
+            {
+                string normalizedRelativePath;
+                try
+                {
+                    normalizedRelativePath = NormalizeCsvPath(Path.GetRelativePath(root, imagePath));
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (normalizedRelativePath.Length == 0 || csvImagePaths.Contains(normalizedRelativePath))
+                {
+                    continue;
+                }
+
+                orphanImageCount++;
+                IncrementCount(orphanImagesByBiome, ResolveBiomeNameFromRelativePath(normalizedRelativePath));
+            }
+
+            return new CsvSyncResult(
+                remainingRows: keptRecords.Count,
+                removedRows: removedRows,
+                malformedRowsDropped: malformedRows,
+                removedRowsByBiome: new Dictionary<string, int>(removedRowsByBiome, StringComparer.OrdinalIgnoreCase),
+                orphanImageCount: orphanImageCount,
+                orphanImagesByBiome: new Dictionary<string, int>(orphanImagesByBiome, StringComparer.OrdinalIgnoreCase));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new IOException(T("SyncFailed"), ex);
         }
         finally
         {
@@ -526,6 +640,41 @@ public static class CsvLogger
 
         fullPath = candidate;
         return true;
+    }
+
+    private static string ResolveBiomeNameForRecord(CaptureRecord record)
+    {
+        string biome = (record.Biome ?? string.Empty).Trim();
+        if (biome.Length > 0)
+        {
+            return biome;
+        }
+
+        return ResolveBiomeNameFromRelativePath(record.Filename);
+    }
+
+    private static string ResolveBiomeNameFromRelativePath(string relativePath)
+    {
+        string normalizedPath = NormalizeCsvPath(relativePath);
+        if (normalizedPath.Length == 0)
+        {
+            return "Unknown";
+        }
+
+        int separatorIndex = normalizedPath.IndexOf('/');
+        if (separatorIndex <= 0)
+        {
+            return "Unknown";
+        }
+
+        return normalizedPath[..separatorIndex];
+    }
+
+    private static void IncrementCount(Dictionary<string, int> counts, string biome)
+    {
+        string key = string.IsNullOrWhiteSpace(biome) ? "Unknown" : biome.Trim();
+        counts.TryGetValue(key, out int current);
+        counts[key] = current + 1;
     }
 
     private static string NormalizeCsvPath(string path)

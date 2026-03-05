@@ -214,6 +214,7 @@ public sealed class DatasetUiState : UIState
     private UITextPanel<string>? _zipButton;
     private UITextPanel<string>? _mergeLatestButton;
     private UITextPanel<string>? _cleanButton;
+    private UITextPanel<string>? _syncButton;
     private UITextPanel<string>? _cleanConfirmButton;
 
     private int _refreshTimer;
@@ -243,7 +244,7 @@ public sealed class DatasetUiState : UIState
             BorderColor = new Color(80, 116, 193) * 0.95f,
         };
         _panel.Width.Set(420f, 0f);
-        _panel.Height.Set(442f, 0f);
+        _panel.Height.Set(482f, 0f);
         _panel.Left.Set(24f, 0f);
         _panel.Top.Set(220f, 0f);
         _panel.SetPadding(10f);
@@ -283,10 +284,11 @@ public sealed class DatasetUiState : UIState
         _zipButton = CreateActionButton(3f, 0.5f, -3f, 0.5f, 254f, DatasetCommand.RunZipFromUi);
         _mergeLatestButton = CreateActionButton(0f, 0f, -3f, 0.5f, 294f, MergeLatestArchive);
         _cleanButton = CreateActionButton(3f, 0.5f, -3f, 0.5f, 294f, DatasetCommand.RunCleanFromUi);
-        _cleanConfirmButton = CreateActionButton(0f, 0f, 0f, 1f, 334f, DatasetCommand.RunCleanConfirmFromUi, true);
+        _syncButton = CreateActionButton(0f, 0f, 0f, 1f, 334f, DatasetCommand.RunSyncFromUi);
+        _cleanConfirmButton = CreateActionButton(0f, 0f, 0f, 1f, 374f, DatasetCommand.RunCleanConfirmFromUi, true);
 
-        _hintLinePrimary = CreateStatusLine(384f, new Color(212, 212, 222));
-        _hintLineSecondary = CreateStatusLine(404f, new Color(212, 212, 222));
+        _hintLinePrimary = CreateStatusLine(424f, new Color(212, 212, 222));
+        _hintLineSecondary = CreateStatusLine(444f, new Color(212, 212, 222));
 
     }
 
@@ -501,6 +503,7 @@ public sealed class DatasetUiState : UIState
         _zipButton?.SetText(T("ZipButton"));
         _mergeLatestButton?.SetText(T("MergeLatestButton"));
         _cleanButton?.SetText(T("CleanButton"));
+        _syncButton?.SetText(T("SyncButton"));
         _cleanConfirmButton?.SetText(T("CleanConfirmButton"));
         string captureKey = GetPrimaryAssignedKey(BiomeDatasetCollector.CaptureKeybind, "F9");
         string autoCaptureKey = GetPrimaryAssignedKey(BiomeDatasetCollector.ToggleAutoKeybind, "F10");
@@ -588,6 +591,7 @@ public sealed class DatasetUiState : UIState
         UpdateButtonStyle(_zipButton, false, false);
         UpdateButtonStyle(_mergeLatestButton, false, false);
         UpdateButtonStyle(_cleanButton, true, false);
+        UpdateButtonStyle(_syncButton, false, false);
         UpdateButtonStyle(_cleanConfirmButton, true, false);
     }
 
