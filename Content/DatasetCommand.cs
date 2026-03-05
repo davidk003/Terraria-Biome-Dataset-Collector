@@ -56,6 +56,10 @@ public sealed class DatasetCommand : ModCommand
                 HandleMerge(args, input);
                 return;
 
+            case "sync":
+                HandleSync();
+                return;
+
             case "ui":
                 HandleUiToggle();
                 return;
@@ -85,6 +89,11 @@ public sealed class DatasetCommand : ModCommand
     public static void RunZipFromUi()
     {
         HandleZip();
+    }
+
+    public static void RunSyncFromUi()
+    {
+        HandleSync();
     }
 
     public static void RunMergeFromUi(string mergePath)
@@ -315,6 +324,60 @@ public sealed class DatasetCommand : ModCommand
         });
     }
 
+    private static void HandleSync()
+    {
+        if (!TryBeginOperation())
+        {
+            Main.NewText(T($"{KeyPrefix}.OperationInProgress"));
+            return;
+        }
+
+        Main.NewText(T($"{KeyPrefix}.SyncStarted"));
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                CsvSyncResult syncResult = CsvLogger.SyncWithDisk();
+                CaptureSystem.InvalidateMetadataCache();
+
+                QueueText($"{KeyPrefix}.SyncSummary", syncResult.RemovedRows, syncResult.RemainingRows);
+
+                if (syncResult.RemovedRows > 0)
+                {
+                    QueueText($"{KeyPrefix}.SyncRemovedByBiome", FormatBiomeCounts(syncResult.RemovedRowsByBiome));
+                }
+                else
+                {
+                    QueueText($"{KeyPrefix}.SyncRemovedNone");
+                }
+
+                if (syncResult.MalformedRowsDropped > 0)
+                {
+                    QueueText($"{KeyPrefix}.SyncMalformedRowsDropped", syncResult.MalformedRowsDropped);
+                }
+
+                if (syncResult.OrphanImageCount > 0)
+                {
+                    QueueText($"{KeyPrefix}.SyncOrphanSummary", syncResult.OrphanImageCount);
+                    QueueText($"{KeyPrefix}.SyncOrphanByBiome", FormatBiomeCounts(syncResult.OrphanImagesByBiome));
+                }
+                else
+                {
+                    QueueText($"{KeyPrefix}.SyncOrphanNone");
+                }
+            }
+            catch (Exception ex)
+            {
+                QueueText($"{KeyPrefix}.SyncError", ex.Message);
+            }
+            finally
+            {
+                EndOperation();
+                DatasetUiSystem.NotifyDatasetMutated();
+            }
+        });
+    }
+
     private static Dictionary<string, int> BuildBiomeCounts(string root)
     {
         Dictionary<string, int> counts = new(StringComparer.OrdinalIgnoreCase);
@@ -479,6 +542,43 @@ public sealed class DatasetCommand : ModCommand
         }
 
         return path;
+    }
+
+    private static string FormatBiomeCounts(IReadOnlyDictionary<string, int> counts)
+    {
+        if (counts.Count == 0)
+        {
+            return T($"{KeyPrefix}.SyncBiomeNone");
+        }
+
+        List<string> entries = new();
+        HashSet<string> consumed = new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string biome in DatasetBiomes.Ordered)
+        {
+            if (counts.TryGetValue(biome, out int count) && count > 0)
+            {
+                entries.Add(T($"{KeyPrefix}.SyncBiomePair", biome, count));
+                consumed.Add(biome);
+            }
+        }
+
+        List<string> extras = new();
+        foreach (KeyValuePair<string, int> pair in counts)
+        {
+            if (pair.Value > 0 && !consumed.Contains(pair.Key))
+            {
+                extras.Add(pair.Key);
+            }
+        }
+
+        extras.Sort(StringComparer.OrdinalIgnoreCase);
+        foreach (string biome in extras)
+        {
+            entries.Add(T($"{KeyPrefix}.SyncBiomePair", biome, counts[biome]));
+        }
+
+        return entries.Count == 0 ? T($"{KeyPrefix}.SyncBiomeNone") : string.Join(", ", entries);
     }
 
     private static void QueueText(string key, params object[] args)
